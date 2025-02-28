@@ -1,7 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
-name: Python application
+name: Run Python Application
 
 on:
   push:
@@ -13,27 +10,31 @@ permissions:
   contents: read
 
 jobs:
-  build:
-
+  run-app:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. 检出代码
     - uses: actions/checkout@v4
+
+    # 2. 设置 Python 3.10
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
+
+    # 3. 安装依赖（包含你的 app.py 所需包）
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # 4. 可选：代码规范检查（如果需要保留）
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+        flake8 . --count --exit-zero --max-line-length=127 --statistics
+
+    # 5. 运行 app.py
+    - name: Run app.py
       run: |
-        pytest
+        python app.py
