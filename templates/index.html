@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL ER图生成器</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>SQL ER图生成器</h1>
+        <div class="main-content">
+            <div class="input-section">
+                <textarea id="sql-input" placeholder="请输入CREATE TABLE语句..."></textarea>
+                <div class="controls">
+                    <div class="settings">
+                        <label>
+                            表间距:
+                            <input type="number" id="table-radius" value="6" min="1" max="20" step="1">
+                        </label>
+                        <label>
+                            字段到表距离:
+                            <input type="number" id="field-radius" value="2" min="1" max="10" step="0.5">
+                        </label>
+                        <label>
+                            <input type="checkbox" id="show-type">
+                            显示数据类型
+                        </label>
+                    </div>
+                    <div class="buttons">
+                        <button id="load-example">加载示例</button>
+                        <button id="generate-btn">生成ER图</button>
+                        <button id="export-drawio-btn">下载Draw.io</button>
+                        <button id="open-drawio-btn">在线打开</button>
+                        <button id="clear-btn">清空</button>
+                    </div>
+                </div>
+            </div>
+            <div class="output-section">
+                <div id="loading" style="display: none;">生成中...</div>
+                <img id="er-diagram" style="display: none;">
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('load-example').addEventListener('click', () => {
+            const exampleSQL = `CREATE TABLE 客户表 (
+    客户ID INT PRIMARY KEY,
+    姓名 VARCHAR(100),
+    邮箱 VARCHAR(100),
+    电话 VARCHAR(20)
+);
+
+CREATE TABLE 订单表 (
+    订单ID INT PRIMARY KEY,
+    客户ID INT,
+    下单时间 TIMESTAMP,
+    总金额 DECIMAL(10,2)
+);
+
+CREATE TABLE 商品表 (
+    商品ID INT PRIMARY KEY,
+    商品名称 VARCHAR(200),
+    价格 DECIMAL(10,2),
+    库存 INT
+);`;
+            document.getElementById('sql-input').value = exampleSQL;
+        });
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.getElementById('sql-input').value = '';
+            document.getElementById('er-diagram').style.display = 'none';
+        });
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const sql = document.getElementById('sql-input').value;
+            const showType = document.getElementById('show-type').checked;
+            const tableRadius = document.getElementById('table-radius').value;
+            const fieldRadius = document.getElementById('field-radius').value;
+            
+            if (!sql.trim()) {
+                alert('请输入SQL语句');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            const diagram = document.getElementById('er-diagram');
+            
+            loading.style.display = 'block';
+            diagram.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('sql', sql);
+            formData.append('show_type', showType);
+            formData.append('table_radius', tableRadius);
+            formData.append('field_radius', fieldRadius);
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '生成失败');
+                }
+
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                diagram.src = imageUrl;
+                diagram.style.display = 'block';
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        document.getElementById('export-drawio-btn').addEventListener('click', async () => {
+            const sql = document.getElementById('sql-input').value;
+            const showType = document.getElementById('show-type').checked;
+            const tableRadius = document.getElementById('table-radius').value;
+            const fieldRadius = document.getElementById('field-radius').value;
+            
+            if (!sql.trim()) {
+                alert('请输入SQL语句');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('sql', sql);
+            formData.append('show_type', showType);
+            formData.append('table_radius', tableRadius);
+            formData.append('field_radius', fieldRadius);
+
+            try {
+                const response = await fetch('/export-drawio?download=true', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '导出失败');
+                }
+
+                // 获取文件名
+                const contentDisposition = response.headers.get('content-disposition');
+                const filename = contentDisposition
+                    ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                    : 'er_diagram.drawio';
+
+                // 下载文件
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        document.getElementById('open-drawio-btn').addEventListener('click', async () => {
+            const sql = document.getElementById('sql-input').value;
+            const showType = document.getElementById('show-type').checked;
+            const tableRadius = document.getElementById('table-radius').value;
+            const fieldRadius = document.getElementById('field-radius').value;
+            
+            if (!sql.trim()) {
+                alert('请输入SQL语句');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('sql', sql);
+            formData.append('show_type', showType);
+            formData.append('table_radius', tableRadius);
+            formData.append('field_radius', fieldRadius);
+
+            try {
+                const response = await fetch('/export-drawio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '导出失败');
+                }
+
+                const xmlContent = await response.text();
+                
+                // 使用 base64 编码 XML 内容
+                const encodedXml = encodeURIComponent(xmlContent);
+                
+                // 打开 draw.io 并加载图表
+                window.open(`https://app.diagrams.net/?client=1#R${encodedXml}`, '_blank');
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 
