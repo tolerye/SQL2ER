@@ -1,0 +1,2 @@
+Flask==3.0.2
+graphviz==0.20.1 
